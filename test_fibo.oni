@@ -1,0 +1,11 @@
+fonction fib(n)
+    si n <= 1 alors
+        retourne n
+    sinon
+        retourne fib(n - 1) + fib(n - 2)
+    fin
+fin
+
+pour i = 6, 10
+    affiche(fib(i))
+fin
