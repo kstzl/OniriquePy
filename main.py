@@ -41,6 +41,11 @@ test = 100
 
 affiche(test + 1)
 
+tant que test < 110 alors
+    affiche(test)
+    test = test + 1
+fin
+
 pour i = 0, 5
     si i == 3 alors
         casse
@@ -53,7 +58,6 @@ fonction ajoute(a, b)
 fin
 
 affiche(ajoute(1, 5))
-
 """)
 
 ctx = Context()
