@@ -27,57 +27,32 @@ class Pomme:
         return "SUPER POMME"
 
 tokenizer = Tokenizer("""
+affiche("Salut, le monde !")
 
-fenetre = nouveau Jeu("Flappy Bird", 800, 600)
-perso = nouveau Cercle()
-img = chargerImage("flappy/bird.png")
-
-x = 800 / 2
-y = 600 / 2
-
-vely = 1
-peutSauter = Vrai
-perdu = Faux
-c = 255
-
-tant que fenetre.active() alors
-
-    fenetre.gerer()
-
-    si perdu == Faux alors
-
-        fenetre.remplir(0, 0, 0)
-
-        si fenetre.appuit("espace") alors
-            si peutSauter alors
-                peutSauter = Faux
-                vely = -1
-                joueSon("flappy/sfx_wing.wav")
-            fin
-        sinon
-            peutSauter = Vrai
-        fin
-        
-        changerTaille(img, 85, 85)
-        fenetre.dessine(img, x, y)
-
-        vely = vely + 0.001
-        y = y + vely / 5
-
-        si y > 750 alors
-            perdu = Vrai
-            joueSon("flappy/sfx_hit.wav")
-            joueSon("flappy/sfx_die.wav")
-        fin
-
-    sinon
-        fenetre.remplir(c, 0, 0)
-        c = c - 0.25
-    fin
-
-    fenetre.afficher()
-    
+si 1 < 3 alors
+    affiche("1 est inférieur à 3 !")
+sinon si 2 == 3
+    affiche("2 == 3!")
+sinon
+    affiche("Sinon ...")
 fin
+
+test = 100
+
+affiche(test + 1)
+
+pour i = 0, 5
+    si i == 3 alors
+        casse
+    fin
+    affiche(i)
+fin
+
+fonction ajoute(a, b)
+    retourne a + b
+fin
+
+affiche(ajoute(1, 5))
 
 """)
 

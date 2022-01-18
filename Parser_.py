@@ -1,4 +1,3 @@
-from sqlite3 import adapt
 from Nodes import *
 from Tokens import *
 
