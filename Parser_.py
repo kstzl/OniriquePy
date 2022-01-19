@@ -174,22 +174,38 @@ class Parser:
         elif token.type == TokenType.FOR:
             self.advance()
             
-            identifier_name = self.eat(TokenType.IDENTIFIER)
+            if self.current_token.type == TokenType.EACH:
+                self.advance()
+                identifier_name = self.eat(TokenType.IDENTIFIER)
+
+                self.eat(TokenType.IN)
+                var = self.expr()
+                blocks = []
+                
+                while self.current_token.type != TokenType.END:
+                    blocks.append(self.expr())
+
+                self.advance()
+
+                return ForEachNode(identifier_name, var, blocks)
             
-            self.eat(TokenType.EQUAL)
-            start = self.expr()
+            else:
+                identifier_name = self.eat(TokenType.IDENTIFIER)
+                
+                self.eat(TokenType.EQUAL)
+                start = self.expr()
 
-            self.eat(TokenType.COMMA)
-            end = self.expr()
+                self.eat(TokenType.COMMA)
+                end = self.expr()
 
-            blocks = []
+                blocks = []
 
-            while self.current_token.type != TokenType.END:
-                blocks.append(self.expr())
+                while self.current_token.type != TokenType.END:
+                    blocks.append(self.expr())
 
-            self.eat(TokenType.END)
+                self.eat(TokenType.END)
 
-            return ForNode(identifier_name, start, end, blocks)
+                return ForNode(identifier_name, start, end, blocks)
 
         elif token.type == TokenType.WHILE:
             self.advance()
@@ -304,7 +320,7 @@ class Parser:
 
             elif self.current_token.type == TokenType.DOT:
                 self.advance()
-                a = self.factor()
+                a = self.term()
                 result = DotAccessor(result, a)
 
             elif self.current_token.type == TokenType.PLUS_PLUS:

@@ -104,6 +104,9 @@ class StringNode(BaseNode):
         to_list[i] = val.execute().value
         return StringNode("".join(to_list))
 
+    def __iterate__(self):
+        return [StringNode(e) for e in self.value]
+
     def __eqeq__(self, other):
         self.expect_node_type("==", other, StringNode)
         return bool_to_node(self.value == other.execute().value)
@@ -141,6 +144,11 @@ class StringNode(BaseNode):
 
     def enMinuscule(self):
         return StringNode(self.value.upper())
+
+    def separe(self, separator):
+        to_list = self.value.split(separator.f_execute(self).value)
+        res = [StringNode(e) for e in to_list]
+        return ListNode(res)
 
     def __repr__(self) -> str:
         return f"(\"{self.value}\")"
@@ -410,6 +418,8 @@ class CallFuncNode(BaseNode):
             res = f.__func_call__(self.execute_args())
         else:
             res = f(*self.execute_args())
+            if res != None: res.f_execute(self)
+            #res.context = self.context
 
         return res
 
@@ -660,10 +670,11 @@ class ForNode(BaseNode):
         self.start = start
         self.end = end
         self.blocks = blocks
-        self.broken = False
 
     def execute(self):
         
+        self.broken = False
+
         start = int(self.start.f_execute(self).value)
         end = int(self.end.f_execute(self).value)
         
@@ -686,13 +697,39 @@ class ForNode(BaseNode):
     def __repr__(self) -> str:
         return f"(ForNode {self.identifier_name}={self.start} -> {self.end})"
 
+class ForEachNode(BaseNode):
+    def __init__(self, identifier_name, var, blocks):
+        self.identifier_name = identifier_name
+        self.var = var
+        self.blocks = blocks
+
+    def execute(self):
+
+        self.broken = False
+
+        self.context = copy.deepcopy(self.context)
+        self.context.loop_node = self
+
+        var_iterator = self.var.f_execute(self).__iterate__()
+
+        for element in var_iterator:
+            self.context.variables[self.identifier_name] = element
+
+            for b in self.blocks:
+                if not self.broken:
+                    b.f_execute(self)
+
+    def __repr__(self):
+        return f"(ForEach {self.identifier_name} IN {self.var})"
+
 class WhileNode(BaseNode):
     def __init__(self, cond, blocks) -> None:
         self.cond = cond
         self.blocks = blocks
-        self.broken = False
 
     def execute(self):
+
+        self.broken = False
         
         self.context = copy.deepcopy(self.context)
         self.context.loop_node = self
@@ -724,14 +761,13 @@ class DotAccessor(BaseNode):
         left = self.left.f_execute(self)
         right = self.right
 
-        if hasattr(left, right.func_name):
-            func = getattr(left, right.func_name)
+        if isinstance(right, CallFuncNode):
+            func_name = right.func.var_name
+            func = getattr(left, func_name)
             args = right.execute_args(self)
-
-            return func(args)
-
+            return func(*args)
         else:
-            self.raise_error(f"Attention ! {left} n'a pas la fonction \"{right.func_name}\" !")
+            self.raise_error(f"Attention ! {left} n'a pas la fonction \"{right}\" !")
 
     def __repr__(self) -> str:
         return f"({self.left}.{self.right})"
@@ -805,7 +841,7 @@ class ListNode(BaseNode):
     def execute(self):
         return self
 
-    def ajoute(self, other):
+    def ajoute(self, *other):
         for e in other:
             self.content.append(e)
 
@@ -816,6 +852,9 @@ class ListNode(BaseNode):
             self.expect_index(i, len(self.content) - 1)
             self.content.pop(i)
         return self.content
+
+    def __iterate__(self):
+        return [e for e in self.content]
 
     def __added__(self, other):
         if isinstance(other, ListNode):

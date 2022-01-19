@@ -1,1 +1,2 @@
---"abc" vs "abc"--
+"a b c".enMajuscule()[0] ne fonctionne pas mais
+fonctionne avec ("a b c".enMajuscule())[0]

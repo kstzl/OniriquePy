@@ -55,6 +55,8 @@ class TokenType(Enum):
     OR          =   42
 
     POWER       =   43
+    EACH        =   44
+    IN          =   45
 
 class Token:
     def __init__(self, t, v = None) -> None:

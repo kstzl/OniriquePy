@@ -162,6 +162,12 @@ class Tokenizer:
         elif result == "ou":
             return Token(TokenType.OR)
 
+        elif result == "chaque":
+            return Token(TokenType.EACH)
+
+        elif result == "dans":
+            return Token(TokenType.IN)
+
         #DEPRECATED
         #elif result == "finif":
             #return Token(TokenType.ENDIF)

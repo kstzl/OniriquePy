@@ -25,16 +25,15 @@ def taille(node):
     except:
         return NumberNode(0)
 
-def test(node):
+def test():
     return NumberNode(3)
 
 tokenizer = Tokenizer("""
-affiche((v = fonction add(a, b)
-    retourne a + b
-fin)(1, 5))
 
-affiche(v(1, 2))
-affiche(add(3, 4))
+pour chaque element dans [1, "a", 2, "b", 3, "c"]
+    affiche(">", element)
+fin
+
 """)
 
 ctx = Context()
