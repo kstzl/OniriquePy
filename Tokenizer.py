@@ -19,6 +19,12 @@ class Tokenizer:
         while self.current_char != None:
             if self.current_char in WHITESPACE:
                 self.advance()
+            elif self.current_char == "#":
+                self.advance()
+                while self.current_char != None:
+                    if self.current_char == "\n": break
+                    self.advance()
+
             elif self.current_char == "." or self.current_char in DIGITS:
                 yield self.generate_number_or_dot()
             elif self.current_char.isalpha():

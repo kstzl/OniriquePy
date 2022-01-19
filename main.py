@@ -30,8 +30,38 @@ def test():
 
 tokenizer = Tokenizer("""
 
-pour chaque element dans [1, "a", 2, "b", 3, "c"]
-    affiche(">", element)
+joueurs = []
+
+tant que Vrai alors
+
+    e = demande("> ").separe(" ")
+    commande = e[0]
+
+    si taille(e) <= 1 alors
+        arg = "Joueur sans nom"
+    sinon
+        arg = e[1]
+    fin
+
+    si commande == "ajt" alors
+
+        affiche(arg, "ajouté !")
+        joueurs.ajoute(arg)
+
+    sinon si commande == "montre" alors
+
+        affiche("Voici la liste des joueurs : ")
+
+        pour chaque joueur dans joueurs
+            affiche("   ", joueur)
+        fin
+
+    sinon
+
+        affiche("Commande inconnue !")
+
+    fin
+
 fin
 
 """)

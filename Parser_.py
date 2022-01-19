@@ -98,6 +98,9 @@ class Parser:
                     self.advance()
                     return SetVarNode(token.value, self.expr())
 
+                elif self.current_token.type == TokenType.LPAREN:
+                    return CallFuncNode(token.value, self.parse_args())
+
             return GetVarNode(token.value)
 
         elif token.type == TokenType.RETURN:
@@ -314,13 +317,16 @@ class Parser:
                 if need_equal == True:
                     result = BracketGetNode(result, a)
 
-            elif self.current_token.type == TokenType.LPAREN:
-                args = self.parse_args()
-                result = CallFuncNode(result, args)
+            #DEPRECATED
+            #elif self.current_token.type == TokenType.LPAREN:
+            #elif self.current_token.type == -1:
+                #args = self.parse_args()
+                #result = CallFuncNode(result, args)
 
             elif self.current_token.type == TokenType.DOT:
                 self.advance()
-                a = self.term()
+                #a = self.term()
+                a = self.factor()
                 result = DotAccessor(result, a)
 
             elif self.current_token.type == TokenType.PLUS_PLUS:
@@ -371,6 +377,9 @@ class Parser:
             elif self.current_token.type == TokenType.LEQTHAN:
                 self.advance()
                 result = LEqThanNode(result, self.factor())
+
+            else:
+                self.raise_error("Syntaxe illégale !")
 
         return result
 

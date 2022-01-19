@@ -412,12 +412,14 @@ class CallFuncNode(BaseNode):
 
     def execute(self):
 
-        f = self.func.f_execute(self)
+        #f = self.func.f_execute(self)
 
-        if isinstance(f, BaseNode):
-            res = f.__func_call__(self.execute_args())
+        func = self.context.variables[self.func]
+
+        if isinstance(func, BaseNode):
+            res = func.__func_call__(self.execute_args())
         else:
-            res = f(*self.execute_args())
+            res = func(*self.execute_args())
             if res != None: res.f_execute(self)
             #res.context = self.context
 
@@ -761,13 +763,16 @@ class DotAccessor(BaseNode):
         left = self.left.f_execute(self)
         right = self.right
 
+        #print(right.__dict__)
         if isinstance(right, CallFuncNode):
-            func_name = right.func.var_name
-            func = getattr(left, func_name)
-            args = right.execute_args(self)
-            return func(*args)
-        else:
-            self.raise_error(f"Attention ! {left} n'a pas la fonction \"{right}\" !")
+            func_name = right.func
+
+            if hasattr(left, func_name):
+                func = getattr(left, func_name)
+                args = right.execute_args(self)
+                return func(*args)
+
+        self.raise_error(f"Attention ! {left} n'a pas la fonction \"{right}\" !")
 
     def __repr__(self) -> str:
         return f"({self.left}.{self.right})"
