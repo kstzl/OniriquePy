@@ -1,0 +1,11 @@
+tant que Vrai alors
+
+    e = demande("Quel est le mot de passe ? ")
+
+    si e == "123" alors
+        affiche("Bravo !")
+        casse
+    sinon
+        affiche("Désolé, ce n'est pas le bon mot de passe.")
+    fin
+fin

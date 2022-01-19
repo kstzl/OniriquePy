@@ -25,22 +25,50 @@ class Tokenizer:
                 yield self.generate_identifier()
             elif self.current_char == "+":
                 self.advance()
-                yield Token(TokenType.PLUS)
+                if self.current_char == "+":
+                    self.advance()
+                    yield Token(TokenType.PLUS_PLUS)
+                elif self.current_char == "=":
+                    self.advance()
+                    yield Token(TokenType.PLUS_EQ)
+                else:
+                    yield Token(TokenType.PLUS)
             elif self.current_char == "-":
                 self.advance()
-                yield Token(TokenType.MINUS)
+                if self.current_char == "-":
+                    self.advance()
+                    yield Token(TokenType.MINUS_MINUS)
+                elif self.current_char == "=":
+                    self.advance()
+                    yield Token(TokenType.MINUS_EQ)
+                else:
+                    yield Token(TokenType.MINUS)
             elif self.current_char == "*":
                 self.advance()
-                yield Token(TokenType.TIMES)
+                if self.current_char == "=":
+                    self.advance()
+                    yield Token(TokenType.TIMES_EQ)
+                else:
+                    yield Token(TokenType.TIMES)
             elif self.current_char == "/":
                 self.advance()
-                yield Token(TokenType.DIVIDE)
+                if self.current_char == "=":
+                    self.advance()
+                    yield Token(TokenType.DIV_EQ)
+                else:
+                    yield Token(TokenType.DIVIDE)
             elif self.current_char == "(":
                 self.advance()
                 yield Token(TokenType.LPAREN)
             elif self.current_char == ")":
                 self.advance()
                 yield Token(TokenType.RPAREN)
+            elif self.current_char == "[":
+                self.advance()
+                yield Token(TokenType.LBRACKET)
+            elif self.current_char == "]":
+                self.advance()
+                yield Token(TokenType.RBRACKET)
             elif self.current_char == ",":
                 self.advance()
                 yield Token(TokenType.COMMA)
@@ -57,7 +85,8 @@ class Tokenizer:
                     self.advance()
                     yield Token(TokenType.NEQ)
                 else:
-                    raise Exception("[TOKENIZER] != EXPECTED !")
+                    yield Token(TokenType.NOT)
+
             elif self.current_char == ">":
                 self.advance()
                 if self.current_char == "=":
@@ -123,6 +152,12 @@ class Tokenizer:
 
         elif result == "sinon":
             return Token(TokenType.ELSE)
+
+        elif result == "et":
+            return Token(TokenType.AND)
+
+        elif result == "ou":
+            return Token(TokenType.OR)
 
         #DEPRECATED
         #elif result == "finif":

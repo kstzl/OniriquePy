@@ -39,6 +39,21 @@ class TokenType(Enum):
     WHILE       =   30
     THAN        =   31
 
+    LBRACKET    =   32
+    RBRACKET    =   33
+
+    NOT         =   34
+
+    PLUS_PLUS   =   35
+    MINUS_MINUS =   36
+    PLUS_EQ     =   37
+    MINUS_EQ    =   38
+    TIMES_EQ    =   39
+    DIV_EQ      =   40
+
+    AND         =   41
+    OR          =   42
+
 class Token:
     def __init__(self, t, v = None) -> None:
         self.type   = t

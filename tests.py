@@ -1,4 +1,2 @@
-if 1 == 1:
-    return 1
-
-print("ok")
+a = [1, 2, 3]
+print(a * 2)

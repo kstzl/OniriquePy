@@ -1,5 +1,5 @@
-from mimetypes import init
 from Interpreter import *
+from Tokens import *
 from Context import Context
 import copy
 
@@ -7,11 +7,23 @@ def bool_to_node(b):
     return TrueNode() if b else FalseNode()
 
 def node_to_bool(b):
-    return True if isinstance(b, TrueNode) or b == 1 else False
+    try:
+        return b.__is_bool__()
+    except:
+        pass
+    return False
 
 class BaseNode:
     def __init__(self) -> None:
         pass
+
+    def expect_node_type(self , s, node, expected_node_type):
+        if not isinstance(node, expected_node_type):
+            self.raise_error(f"Attention ! Tu as essayer {s} un {type(self)} avec {type(node)} ! \n Tu aurais du utiliser un {expected_node_type}.")
+
+    def expect_index(self, actual, target):
+        if actual > target:
+            self.raise_error(f"Attention ! Tu essayes d'accéder à l'index {actual} sauf que la taille de la chaine de caractère n'est que de {target}")
 
     def raise_error(self, e):
         raise Exception(f"[NODE ERROR] {e}")
@@ -21,7 +33,36 @@ class BaseNode:
         return self.execute()
 
     def __repr__(self) -> str:
-        return "Base Node"
+        return "(Base Node)"
+
+
+class BracketGetNode(BaseNode):
+    def __init__(self, node, index) -> None:
+        self.node = node
+        self.index = index
+
+    def execute(self):
+        node_executed = self.node.f_execute(self)
+        id_executed = self.index.f_execute(self)
+        return node_executed.__bracket_get__(id_executed)
+
+    def __repr__(self) -> str:
+        return f"({self.node}[{self.index}])"
+
+class BracketSetNode(BaseNode):
+    def __init__(self, node, index, val) -> None:
+        self.node = node
+        self.index = index
+        self.val = val
+
+    def execute(self):
+        node_executed = self.node.f_execute(self)
+        id_executed = self.index.f_execute(self)
+        val_executed = self.val.f_execute(self)
+        return node_executed.__bracket_set__(id_executed, val_executed)
+
+    def __repr__(self) -> str:
+        return f"({self.node}[{self.index}] = {self.val})"
 
 class RootNode(BaseNode):
     def __init__(self, nodes) -> None:
@@ -43,36 +84,177 @@ class RootNode(BaseNode):
         return res
 
     def __repr__(self) -> str:
-        return "Root Node"
+        return "(Root Node)"
 
 class StringNode(BaseNode):
     def __init__(self, value) -> None:
         self.value = value
 
-    def execute(self):
+    def __bracket_get__(self, other):
+        self.expect_node_type("de recupérer un index dans un", other, NumberNode)
+        i = int(other.execute().value)
+        self.expect_index(i, len(self.value) - 1)
+        return StringNode(self.value[i])
+
+    def __bracket_set__(self, index, val):
+        self.expect_node_type("de mettre un index dans un", index, NumberNode)
+        i = int(index.execute().value)
+        self.expect_index(i, len(self.value) - 1)
+        to_list = list(self.value)
+        to_list[i] = val.execute().value
+        return StringNode("".join(to_list))
+
+    def __eqeq__(self, other):
+        self.expect_node_type("==", other, StringNode)
+        return bool_to_node(self.value == other.execute().value)
+
+    def __neq__(self, other):
+        self.expect_node_type("!=", other, StringNode)
+        return bool_to_node(self.value != other.execute().value)
+
+    def __added__(self, other):
+        self.expect_node_type("+", other, StringNode)
+        return StringNode(self.value + other.execute().value)
+
+    def __plus_eq__(self, other):
+        self.expect_node_type("+", other, StringNode)
+        return StringNode(self.value + other.execute().value)
+
+    def __minus_minus__(self):
+        return StringNode(self.value[:-1])
+
+    def __minus_eq__(self, other):
+        self.expect_node_type("-=", other, NumberNode)
+        return StringNode(self.value[:-int(other.execute().value)])
+
+    def __print__(self):
         return self.value
 
+    def __size__(self):
+        return NumberNode(len(self.value))
+
+    def execute(self):
+        return self
+
+    def enMajuscule(self):
+        return StringNode(self.value.upper())
+
+    def enMinuscule(self):
+        return StringNode(self.value.upper())
+
     def __repr__(self) -> str:
-        return f"STRING : {self.value}"
+        return f"(\"{self.value}\")"
 
 class NumberNode(BaseNode):
     def __init__(self, value) -> None:
         self.value = value
 
+    def __is_bool__(self):
+        return True if self.value > 0 else None
+
+    def __not__(self):
+        return 0 if self.value > 0 else 1
+
+    def __added__(self, other):
+        self.expect_node_type("d'ajouter", other, NumberNode)
+        return NumberNode(self.value + other.execute().value)
+
+    def __subbed__(self, other):
+        self.expect_node_type("de soustraire", other, NumberNode)
+        return NumberNode(self.value - other.execute().value)
+
+    def __multed__(self, other):
+        self.expect_node_type("de multiplier", other, NumberNode)
+        return NumberNode(self.value * other.execute().value)
+
+    def __divided__(self, other):
+        self.expect_node_type("de diviser", other, NumberNode)
+        right = other.execute().value
+        if right == 0:
+            self.raise_error(f"Attention ! Tu as voulu diviser {self.value} par {right} !")
+        return NumberNode(self.value / right)
+
+    def __eqeq__(self, other):
+        self.expect_node_type("==", other, NumberNode)
+        right = other.execute().value
+        return bool_to_node(self.value == right)
+
+    def __neq__(self, other):
+        self.expect_node_type("!=", other, NumberNode)
+        right = other.execute().value
+        return bool_to_node(self.value != right)
+
+    def __gthan__(self, other):
+        self.expect_node_type(">", other, NumberNode)
+        right = other.execute().value
+        return bool_to_node(self.value > right)
+
+    def __geqthan__(self, other):
+        self.expect_node_type(">=", other, NumberNode)
+        right = other.execute().value
+        return bool_to_node(self.value >= right)
+
+    def __lthan__(self, other):
+        self.expect_node_type("<", other, NumberNode)
+        right = other.execute().value
+        return bool_to_node(self.value < right)
+
+    def __leqthan__(self, other):
+        self.expect_node_type("<=", other, NumberNode)
+        right = other.execute().value
+        return bool_to_node(self.value <= right)
+
+    def __plus_plus__(self):
+        return NumberNode(self.value + 1)
+
+    def __minus_minus__(self):
+        return NumberNode(self.value - 1)
+
+    def __plus_eq__(self, other):
+        self.expect_node_type("+=", other, NumberNode)
+        return NumberNode(self.value + other.execute().value)
+
+    def __minus_eq__(self, other):
+        self.expect_node_type("-=", other, NumberNode)
+        return NumberNode(self.value - other.execute().value)
+
+    def __times_eq__(self, other):
+        self.expect_node_type("*=", other, NumberNode)
+        return NumberNode(self.value * other.execute().value)
+
+    def __div_eq__(self, other):
+        self.expect_node_type("/=", other, NumberNode)
+        b = other.execute().value
+        if b == 0:
+            self.raise_error(f"Attention ! Tu as voulu diviser {self.value} par {b} !")
+        return NumberNode(self.value / b)
+
+    def __print__(self):
+        return self.value 
+
     def execute(self):
-        return self.value
+        return self
 
     def __repr__(self) -> str:
-        return f"{self.value}"
+        return f"({self.value})"
 
 class TrueNode(BaseNode):
     def __init__(self) -> None:
         pass
 
     def execute(self):
-        return 1
+        return self
+    
+    def __is_bool__(self):
+        return True
+
+    def __not__(self):
+        return FalseNode()
 
     def __repr__(self) -> str:
+        return "(TRUE NODE)"
+
+    def __print__(self):
         return "Vrai"
 
 class FalseNode(BaseNode):
@@ -80,9 +262,18 @@ class FalseNode(BaseNode):
         pass
 
     def execute(self):
-        return 0
+        return self
+
+    def __is_bool__(self):
+        return False
+
+    def __not__(self):
+        return TrueNode()
 
     def __repr__(self) -> str:
+        return "(FALSE NODE)"
+
+    def __print__(self):
         return "Faux"
 
 class PositiviteNumberNode(BaseNode):
@@ -90,7 +281,7 @@ class PositiviteNumberNode(BaseNode):
         self.value = value
         
     def execute(self):
-        return +self.value.f_execute(self)
+        return NumberNode(+self.value.f_execute(self).value)
 
     def __repr__(self) -> str:
         return f"+{self.value}"
@@ -100,7 +291,7 @@ class NegativeNumberNode(BaseNode):
         self.value = value
         
     def execute(self):
-        return -self.value.f_execute(self)
+        return NumberNode(-self.value.f_execute(self).value)
 
     def __repr__(self) -> str:
         return f"-{self.value}"
@@ -111,7 +302,9 @@ class AddNode(BaseNode):
         self.right = right
 
     def execute(self):
-        return self.left.f_execute(self) + self.right.f_execute(self)
+        left = self.left.f_execute(self)
+        right = self.right.f_execute(self)
+        return left.__added__(right)
 
     def __repr__(self) -> str:
         return f"({self.left} + {self.right})"
@@ -122,7 +315,10 @@ class MinusNode(BaseNode):
         self.right = right
 
     def execute(self):
-        return self.left.f_execute(self) - self.right.f_execute(self)
+        left = self.left.f_execute(self)
+        right = self.right.f_execute(self)
+        return left.__subbed__(right)
+        #return self.left.f_execute(self) - self.right.f_execute(self)
 
     def __repr__(self) -> str:
         return f"({self.left} - {self.right})"
@@ -133,7 +329,9 @@ class TimesNode(BaseNode):
         self.right = right
 
     def execute(self):
-        return self.left.f_execute(self) * self.right.f_execute(self)
+        left = self.left.f_execute(self)
+        right = self.right.f_execute(self)
+        return left.__multed__(right)
 
     def __repr__(self) -> str:
         return f"({self.left} * {self.right})"
@@ -144,10 +342,9 @@ class DivideNode(BaseNode):
         self.right = right
 
     def execute(self):
-        a = self.left.f_execute(self)
-        b = self.right.f_execute(self)
-        if b == 0: self.raise_error(f"Division By Zero ! ({a} / {b})")
-        return a / b
+        left = self.left.f_execute(self)
+        right = self.right.f_execute(self)
+        return left.__divided__(right)
 
     def __repr__(self) -> str:
         return f"({self.left} / {self.right})"
@@ -156,6 +353,13 @@ class GetVarNode(BaseNode):
     def __init__(self, var_name) -> None:
         self.var_name = var_name
 
+    def execute_special(self):
+        self.context.check_variable(self.var_name)
+        v = self.context.variables[self.var_name]
+        t = v["type"]
+        r = v["res"]
+        return t(r)
+        
     def execute(self):
         self.context.check_variable(self.var_name)
         return self.context.variables[self.var_name]
@@ -181,14 +385,20 @@ class CallFuncNode(BaseNode):
         self.func_name = func_name
         self.args = args
 
+    def execute_args(self, custom_node = None):
+        _executed_args = []
+        #Executing all args:
+        for arg in self.args:
+            if custom_node != None:
+                _executed_args.append(arg.f_execute(custom_node))
+            else:
+                _executed_args.append(arg.f_execute(self))
+        return _executed_args
+
     def execute(self):
         self.context.check_function(self.func_name)
 
-        executed_args = []
-
-        #Executing all args:
-        for arg in self.args:
-            executed_args.append(arg.f_execute(self))
+        executed_args = self.execute_args()
 
         func = self.context.functions[self.func_name]
         is_custom = isinstance(func, CustomFunctionNode)
@@ -221,7 +431,7 @@ class CallFuncNode(BaseNode):
             return func(*executed_args)
 
     def __repr__(self) -> str:
-        return f"{self.func_name}"
+        return f"({self.func_name}())"
 
 class ReturnNode(BaseNode):
     def __init__(self, return_value) -> None:
@@ -233,7 +443,7 @@ class ReturnNode(BaseNode):
         return res
 
     def __repr__(self) -> str:
-        return "Return"
+        return "(return)"
 
 class EndNode(BaseNode):
     def __init__(self) -> None:
@@ -243,7 +453,7 @@ class EndNode(BaseNode):
         return None
     
     def __repr__(self) -> str:
-        return "End Node"
+        return "(end)"
 
 class CustomFunctionNode(BaseNode):
     def __init__(self, func_name, func_params, func_content) -> None:
@@ -255,7 +465,7 @@ class CustomFunctionNode(BaseNode):
         self.context.functions[self.func_name] = self
 
     def __repr__(self) -> str:
-        return "Custom Function Definition"
+        return "(def {self.func_name})"
 
 class InstanciateClassNode(BaseNode):
     def __init__(self, class_name, params) -> None:
@@ -297,10 +507,12 @@ class EqEqNode(BaseNode):
         self.right = right
 
     def execute(self):
-        return bool_to_node(self.left.f_execute(self) == self.right.f_execute(self))
+        left = self.left.f_execute(self)
+        right = self.right.f_execute(self)
+        return left.__eqeq__(right)
 
     def __repr__(self) -> str:
-        return f"{self.left} == {self.right}"
+        return f"({self.left} == {self.right})"
 
 class NotEqNode(BaseNode):
     def __init__(self, left, right) -> None:
@@ -308,10 +520,12 @@ class NotEqNode(BaseNode):
         self.right = right
 
     def execute(self):
-        return bool_to_node(self.left.f_execute(self) != self.right.f_execute(self))
+        left = self.left.f_execute(self)
+        right = self.right.f_execute(self)
+        return left.__neq__(right)
 
     def __repr__(self) -> str:
-        return f"{self.left} != {self.right}"
+        return f"({self.left} != {self.right})"
 
 class GThanNode(BaseNode):
     def __init__(self, left, right) -> None:
@@ -319,10 +533,12 @@ class GThanNode(BaseNode):
         self.right = right
 
     def execute(self):
-        return bool_to_node(self.left.f_execute(self) > self.right.f_execute(self))
+        left = self.left.f_execute(self)
+        right = self.right.f_execute(self)
+        return left.__gthan__(right)
 
     def __repr__(self) -> str:
-        return f"{self.left} > {self.right}"
+        return f"({self.left} > {self.right})"
 
 class GEqThanNode(BaseNode):
     def __init__(self, left, right) -> None:
@@ -330,10 +546,12 @@ class GEqThanNode(BaseNode):
         self.right = right
 
     def execute(self):
-        return bool_to_node(self.left.f_execute(self) >= self.right.f_execute(self))
+        left = self.left.f_execute(self)
+        right = self.right.f_execute(self)
+        return left.__geqthan__(right)
 
     def __repr__(self) -> str:
-        return f"{self.left} >= {self.right}"
+        return f"({self.left} >= {self.right})"
 
 class LThanNode(BaseNode):
     def __init__(self, left, right) -> None:
@@ -341,10 +559,12 @@ class LThanNode(BaseNode):
         self.right = right
 
     def execute(self):
-        return bool_to_node(self.left.f_execute(self) < self.right.f_execute(self))
+        left = self.left.f_execute(self)
+        right = self.right.f_execute(self)
+        return left.__lthan__(right)
 
     def __repr__(self) -> str:
-        return f"{self.left} < {self.right}"
+        return f"({self.left} < {self.right})"
 
 class LEqThanNode(BaseNode):
     def __init__(self, left, right) -> None:
@@ -352,10 +572,12 @@ class LEqThanNode(BaseNode):
         self.right = right
 
     def execute(self):
-        return bool_to_node(self.left.f_execute(self) <= self.right.f_execute(self))
+        left = self.left.f_execute(self)
+        right = self.right.f_execute(self)
+        return left.__leqthan__(right)
 
     def __repr__(self) -> str:
-        return f"{self.left} <= {self.right}"
+        return f"({self.left} <= {self.right})"
 
 class ElseIfNode(BaseNode):
     def __init__(self, condition, blocks) -> None:
@@ -366,7 +588,7 @@ class ElseIfNode(BaseNode):
         pass
 
     def __repr__(self) -> str:
-        return f"ElseIfNode ({self.condition})"
+        return f"(ElseIf : {self.condition})"
 
 class ConditionalNode(BaseNode):
     def __init__(self, condition, blocks_ok, blocks_else_if, blocks_else) -> None:
@@ -409,7 +631,7 @@ class ConditionalNode(BaseNode):
         #return None
 
     def __repr__(self) -> str:
-        return f"Conditional Node ({self.condition})"
+        return f"(If : {self.condition})"
 
 class BreakNode(BaseNode):
     def __init__(self) -> None:
@@ -422,7 +644,7 @@ class BreakNode(BaseNode):
             self.context.loop_node.broken = True
 
     def __repr__(self) -> str:
-        return "BREAK NODE !!!"
+        return "(break)"
 
 class ForNode(BaseNode):
     def __init__(self, identifier_name, start, end, blocks) -> None:
@@ -434,8 +656,8 @@ class ForNode(BaseNode):
 
     def execute(self):
         
-        start = int(self.start.f_execute(self))
-        end = int(self.end.f_execute(self))
+        start = int(self.start.f_execute(self).value)
+        end = int(self.end.f_execute(self).value)
         
         if start > end:
             loop = reversed(range(end, start))
@@ -447,14 +669,14 @@ class ForNode(BaseNode):
 
         for i in loop:
             
-            self.context.variables[self.identifier_name] = i
+            self.context.variables[self.identifier_name] = NumberNode(i)
 
             for b in self.blocks:
                 if not self.broken:
                     b.f_execute(self)
 
     def __repr__(self) -> str:
-        return f"ForNode ({self.identifier_name}={self.start} -> {self.end})"
+        return f"(ForNode {self.identifier_name}={self.start} -> {self.end})"
 
 class WhileNode(BaseNode):
     def __init__(self, cond, blocks) -> None:
@@ -473,4 +695,156 @@ class WhileNode(BaseNode):
                     b.f_execute(self)
 
     def __repr__(self) -> str:
-        return f"WHILE ({self.cond})"
+        return f"(While {self.cond})"
+
+class NotNode(BaseNode):
+    def __init__(self, node) -> None:
+        self.node = node
+
+    def execute(self):
+        return self.node.f_execute(self).__not__()
+
+    def __repr__(self) -> str:
+        return f"(NOT{self.node}"
+
+class DotAccessor(BaseNode):
+    def __init__(self, left, right) -> None:
+        self.left = left
+        self.right = right
+
+    def execute(self):
+        left = self.left.f_execute(self)
+        right = self.right
+
+        if hasattr(left, right.func_name):
+            func = getattr(left, right.func_name)
+            args = right.execute_args(self)
+
+            return func(args)
+
+        else:
+            self.raise_error(f"Attention ! {left} n'a pas la fonction \"{right.func_name}\" !")
+
+    def __repr__(self) -> str:
+        return f"({self.left}.{self.right})"
+
+class PlusPlusMinusMinusEtc(BaseNode):
+    def __init__(self, node, tok, val = None):
+        self.node = node
+        self.tok = tok
+        self.val = val
+
+    def execute(self):
+        node = self.node.f_execute(self)
+        result = None
+
+        if self.val != None:
+            self.val.f_execute(self)
+        
+        if self.tok == TokenType.PLUS_PLUS:
+            result =  node.__plus_plus__()
+        elif self.tok == TokenType.MINUS_MINUS:
+            result = node.__minus_minus__()
+        elif self.tok == TokenType.PLUS_EQ:
+            result = node.__plus_eq__(self.val)
+        elif self.tok == TokenType.MINUS_EQ:
+            result =  node.__minus_eq__(self.val)
+        elif self.tok == TokenType.TIMES_EQ:
+            result = node.__times_eq__(self.val)
+        elif self.tok == TokenType.DIV_EQ:
+            result = node.__div_eq__(self.val)
+
+        if isinstance(self.node, GetVarNode):
+            return SetVarNode(self.node.var_name, result.f_execute(self)).f_execute(self)
+        else:
+            return result.f_execute(self)
+
+    def __repr__(self):
+        return f"(++{self.node})"
+
+class AndNode(BaseNode):
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def execute(self):
+        a = self.left.f_execute(self)
+        b = self.right.f_execute(self)
+        r = bool_to_node(node_to_bool(a) and node_to_bool(b))
+        return r
+
+    def __repr__(self):
+        return f"({self.left} AND {self.right})"
+    
+class OrNode(BaseNode):
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def execute(self):
+        a = self.left.f_execute(self)
+        b = self.right.f_execute(self)
+        r = bool_to_node(node_to_bool(a) or node_to_bool(b))
+        return r
+
+    def __repr__(self):
+        return f"({self.left} OR {self.right})"
+
+class ListNode(BaseNode):
+    def __init__(self, content):
+        self.content = content
+
+    def execute(self):
+        return self
+
+    def ajoute(self, other):
+        for e in other:
+            self.content.append(e)
+
+    def supprime(self, indexes):
+        for index in indexes:
+            self.expect_node_type("de supprimer un index dans un", index, NumberNode)
+            i = int(index.execute().value)
+            self.expect_index(i, len(self.content) - 1)
+            self.content.pop(i)
+        return self.content
+
+    def __added__(self, other):
+        if isinstance(other, ListNode):
+            return ListNode(self.content + other.execute().content)
+        else:
+            self.content.append(other)
+            return self
+
+    def __minus_minus__(self):
+        return ListNode(self.content[:-1])
+            
+    def __multed__(self, other):
+        self.expect_node_type("de multiplier un tableau dans un", other, NumberNode)
+        i = int(other.execute().value)
+        return ListNode(self.content * i)
+
+    def __plus_eq__(self, other):
+        return self.__added__(other)
+
+    def __times_eq__(self, other):
+        return self.__multed__(other)
+
+    def __size__(self):
+        return NumberNode(len(self.content))
+
+    def __bracket_get__(self, other):
+        self.expect_node_type("de recupérer un index dans un", other, NumberNode)
+        i = int(other.execute().value)
+        self.expect_index(i, len(self.content) - 1)
+        return self.content[i]
+
+    def __bracket_set__(self, index, val):
+        self.expect_node_type("de mettre un index dans un", index, NumberNode)
+        i = int(index.execute().value)
+        self.expect_index(i, len(self.content) - 1)
+        self.content[i] = val.execute()
+        return ListNode(self.content)
+
+    def __repr__(self):
+        return f"(Liste : {self.content})"

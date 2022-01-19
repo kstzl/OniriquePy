@@ -101,10 +101,13 @@ class Parser:
                     self.advance()
                     return SetVarNode(token.value, self.expr())
 
+                #DEPRECATED
+                """
                 elif self.current_token.type == TokenType.DOT:
                     self.advance()
                     func_name = self.eat(TokenType.IDENTIFIER)
                     return CallClassFuncNode(token.value, func_name, self.parse_args())
+                """
 
             return GetVarNode(token.value)
 
@@ -216,38 +219,68 @@ class Parser:
 
             return WhileNode(cond, blocks)
 
+        elif token.type == TokenType.NOT:
+            self.advance()
+            return NotNode(self.expr())
+
+        elif token.type == TokenType.LBRACKET:
+            content = self.parse_args(start_token = TokenType.LBRACKET, end_token = TokenType.RBRACKET)
+            return ListNode(content)
+
         self.raise_error("NUMBER | PLUS | MINUS was expected !")
 
-    def parse_args(self):
-        self.eat(TokenType.LPAREN)
+    def parse_args(self, start_token = TokenType.LPAREN, end_token = TokenType.RPAREN):
+        self.eat(start_token)
         args = []
 
         if self.can_advance():
-            if self.current_token.type != TokenType.RPAREN:
+            if self.current_token.type != end_token:
                 while self.can_advance():
 
                     e = self.expr()
 
                     if not self.can_advance(): break
 
-                    if self.current_token.type in (TokenType.COMMA, TokenType.RPAREN):
+                    if self.current_token.type in (TokenType.COMMA, end_token):
                         args.append(e)
                         
                         tok_type = self.current_token.type
 
-                        if tok_type == TokenType.RPAREN:
+                        if tok_type == end_token:
                             break
                         elif tok_type == TokenType.COMMA:
                             self.advance()
 
-        self.eat(TokenType.RPAREN)
+        self.eat(end_token)
         
         return args
 
     def term(self):
         result = self.factor()
 
-        while self.can_advance() and self.current_token.type in (TokenType.TIMES, TokenType.DIVIDE):
+        while self.can_advance() and self.current_token.type in (
+            TokenType.TIMES,
+            TokenType.DIVIDE,
+
+            TokenType.LBRACKET,
+
+            TokenType.DOT,
+
+            TokenType.PLUS_PLUS,
+            TokenType.MINUS_MINUS,
+            TokenType.PLUS_EQ,
+            TokenType.MINUS_EQ,
+            TokenType.TIMES_EQ,
+            TokenType.DIV_EQ,
+            
+            TokenType.EQEQ,
+            TokenType.NEQ,
+            TokenType.GTHAN,
+            TokenType.GEQTHAN,
+            TokenType.LTHAN,
+            TokenType.LEQTHAN
+        ):
+                
             if self.current_token.type == TokenType.TIMES:
                 self.advance()
                 result = TimesNode(result, self.factor())
@@ -256,12 +289,87 @@ class Parser:
                 self.advance()
                 result = DivideNode(result, self.factor())
 
+            elif self.current_token.type == TokenType.LBRACKET:
+                self.advance()
+                a = self.factor()
+                self.eat(TokenType.RBRACKET)
+                need_equal = True
+                
+                if self.current_token != None:
+                    if self.current_token.type == TokenType.EQUAL:
+                        self.advance()
+                        #I DONT KNOW OMG !! expr() or factor() ??? WHAT IS THE BEST
+                        #b = self.factor() 
+                        b = self.expr()
+                        result = BracketSetNode(result, a, b)
+                        need_equal = False
+
+                if need_equal == True:
+                    result = BracketGetNode(result, a)
+
+            elif self.current_token.type == TokenType.DOT:
+                self.advance()
+                a = self.factor()
+                result = DotAccessor(result, a)
+
+            elif self.current_token.type == TokenType.PLUS_PLUS:
+                self.advance()
+                result = PlusPlusMinusMinusEtc(result, TokenType.PLUS_PLUS)
+
+            elif self.current_token.type == TokenType.MINUS_MINUS:
+                self.advance()
+                result = PlusPlusMinusMinusEtc(result, TokenType.MINUS_MINUS)
+
+            elif self.current_token.type == TokenType.PLUS_EQ:
+                self.advance()
+                result = PlusPlusMinusMinusEtc(result, TokenType.PLUS_EQ, self.factor())
+
+            elif self.current_token.type == TokenType.MINUS_EQ:
+                self.advance()
+                result = PlusPlusMinusMinusEtc(result, TokenType.MINUS_EQ, self.factor())
+
+            elif self.current_token.type == TokenType.TIMES_EQ:
+                self.advance()
+                result = PlusPlusMinusMinusEtc(result, TokenType.TIMES_EQ, self.factor())
+
+            elif self.current_token.type == TokenType.DIV_EQ:
+                self.advance()
+                result = PlusPlusMinusMinusEtc(result, TokenType.DIV_EQ, self.factor())
+
+            #Conditions
+            elif self.current_token.type == TokenType.EQEQ:
+                self.advance()
+                result = EqEqNode(result, self.factor())
+
+            elif self.current_token.type == TokenType.NEQ:
+                self.advance()
+                result = NotEqNode(result, self.factor())
+
+            elif self.current_token.type == TokenType.GTHAN:
+                self.advance()
+                result = GThanNode(result, self.factor())
+
+            elif self.current_token.type == TokenType.GEQTHAN:
+                self.advance()
+                result = GEqThanNode(result, self.factor())
+
+            elif self.current_token.type == TokenType.LTHAN:
+                self.advance()
+                result = LThanNode(result, self.factor())
+
+            elif self.current_token.type == TokenType.LEQTHAN:
+                self.advance()
+                result = LEqThanNode(result, self.factor())
+
         return result
 
     def expr(self):
         result = self.term()
 
-        while self.can_advance() and self.current_token.type in (TokenType.PLUS, TokenType.MINUS):
+        while self.can_advance() and self.current_token.type in (
+            TokenType.PLUS,
+            TokenType.MINUS
+        ):
             if self.current_token.type == TokenType.PLUS:
                 self.advance()
                 result = AddNode(result, self.term())
@@ -271,37 +379,19 @@ class Parser:
                 result = MinusNode(result, self.term())
 
         while self.can_advance() and self.current_token.type in (
-            TokenType.EQEQ,
-            TokenType.NEQ,
-            TokenType.GTHAN,
-            TokenType.GEQTHAN,
-            TokenType.LTHAN,
-            TokenType.LEQTHAN
+            TokenType.AND,
+            TokenType.OR
         ):
-            if self.current_token.type == TokenType.EQEQ:
+            #Conditions
+            if self.current_token.type == TokenType.AND:
                 self.advance()
-                result = EqEqNode(result, self.term())
+                result = AndNode(result, self.term())
 
-            elif self.current_token.type == TokenType.NEQ:
+            elif self.current_token.type == TokenType.OR:
                 self.advance()
-                result = NotEqNode(result, self.term())
-
-            elif self.current_token.type == TokenType.GTHAN:
-                self.advance()
-                result = GThanNode(result, self.term())
-
-            elif self.current_token.type == TokenType.GEQTHAN:
-                self.advance()
-                result = GEqThanNode(result, self.term())
-
-            elif self.current_token.type == TokenType.LTHAN:
-                self.advance()
-                result = LThanNode(result, self.term())
-
-            elif self.current_token.type == TokenType.LEQTHAN:
-                self.advance()
-                result = LEqThanNode(result, self.term())
-
+                a = result
+                result = OrNode(result, self.term())
+                
         return result
 
     def can_advance(self):
