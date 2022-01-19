@@ -155,6 +155,10 @@ class NumberNode(BaseNode):
     def __not__(self):
         return 0 if self.value > 0 else 1
 
+    def __powed__(self, other):
+        self.expect_node_type("d'ajouter", other, NumberNode)
+        return NumberNode(self.value ** other.execute().value)
+
     def __added__(self, other):
         self.expect_node_type("d'ajouter", other, NumberNode)
         return NumberNode(self.value + other.execute().value)
@@ -296,6 +300,16 @@ class NegativeNumberNode(BaseNode):
     def __repr__(self) -> str:
         return f"-{self.value}"
 
+class PowerNode(BaseNode):
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def execute(self):
+        left = self.left.f_execute(self)
+        right = self.right.f_execute(self)
+        return left.__powed__(right)
+
 class AddNode(BaseNode):
     def __init__(self, left, right) -> None:
         self.left = left
@@ -352,13 +366,6 @@ class DivideNode(BaseNode):
 class GetVarNode(BaseNode):
     def __init__(self, var_name) -> None:
         self.var_name = var_name
-
-    def execute_special(self):
-        self.context.check_variable(self.var_name)
-        v = self.context.variables[self.var_name]
-        t = v["type"]
-        r = v["res"]
-        return t(r)
         
     def execute(self):
         self.context.check_variable(self.var_name)
@@ -381,8 +388,8 @@ class SetVarNode(BaseNode):
         return f"(SET: {self.var_name})"
 
 class CallFuncNode(BaseNode):
-    def __init__(self, func_name, args) -> None:
-        self.func_name = func_name
+    def __init__(self, func, args) -> None:
+        self.func = func
         self.args = args
 
     def execute_args(self, custom_node = None):
@@ -396,42 +403,18 @@ class CallFuncNode(BaseNode):
         return _executed_args
 
     def execute(self):
-        self.context.check_function(self.func_name)
 
-        executed_args = self.execute_args()
+        f = self.func.f_execute(self)
 
-        func = self.context.functions[self.func_name]
-        is_custom = isinstance(func, CustomFunctionNode)
-
-        if is_custom:
-            #parser = Parser_.Parser(func.func_content, ignore_no_tokens = True)
-            #root_node = parser.parse()
-
-            ctx = copy.deepcopy(self.context)
-
-            #Setting variables - CHECK
-            if len(executed_args) > len(func.func_params):
-                self.raise_error("Too much parameters !")
-
-            elif len(executed_args) < len(func.func_params):
-                self.raise_error("Missing parameters !")
-
-            #Setting variables
-            for i, _ in enumerate(func.func_params):
-                param_name      = func.func_params[i].var_name
-                param_result    = executed_args[i]
-
-                ctx.variables[param_name] = param_result
-
-            i = Interpreter(RootNode(func.func_content), ctx)
-
-            return i.interpret()
-
+        if isinstance(f, BaseNode):
+            res = f.__func_call__(self.execute_args())
         else:
-            return func(*executed_args)
+            res = f(*self.execute_args())
+
+        return res
 
     def __repr__(self) -> str:
-        return f"({self.func_name}())"
+        return f"({self.func}())"
 
 class ReturnNode(BaseNode):
     def __init__(self, return_value) -> None:
@@ -461,11 +444,36 @@ class CustomFunctionNode(BaseNode):
         self.func_params    = func_params
         self.func_content   = func_content
 
+    def __func_call__(self, args):
+        #Setting  context
+        ctx = copy.deepcopy(self.context)
+
+        #Checking parameters
+        if len(args) > len(self.func_params):
+            self.raise_error("Trop de paramètres !")
+
+        elif len(args) < len(self.func_params):
+            self.raise_error("Pas assez de paramètres")
+
+        #Setting variables
+        for i, _ in enumerate(self.func_params):
+            param_name      = self.func_params[i].var_name
+            param_result    = args[i]
+
+            ctx.variables[param_name] = param_result
+
+        #Creating an Interpreter instance !
+        i = Interpreter(RootNode(self.func_content), ctx)
+
+        #Return the value
+        return i.interpret()
+
     def execute(self):
-        self.context.functions[self.func_name] = self
+        self.context.variables[self.func_name] = self
+        return self
 
     def __repr__(self) -> str:
-        return "(def {self.func_name})"
+        return f"(function definition {self.func_name})"
 
 class InstanciateClassNode(BaseNode):
     def __init__(self, class_name, params) -> None:

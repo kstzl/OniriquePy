@@ -94,20 +94,9 @@ class Parser:
             self.advance()
 
             if self.can_advance():
-                if self.current_token.type == TokenType.LPAREN:
-                    return CallFuncNode(token.value, self.parse_args())
-
-                elif self.current_token.type == TokenType.EQUAL:
+                if self.current_token.type == TokenType.EQUAL:
                     self.advance()
                     return SetVarNode(token.value, self.expr())
-
-                #DEPRECATED
-                """
-                elif self.current_token.type == TokenType.DOT:
-                    self.advance()
-                    func_name = self.eat(TokenType.IDENTIFIER)
-                    return CallClassFuncNode(token.value, func_name, self.parse_args())
-                """
 
             return GetVarNode(token.value)
 
@@ -263,6 +252,7 @@ class Parser:
             TokenType.DIVIDE,
 
             TokenType.LBRACKET,
+            TokenType.LPAREN,
 
             TokenType.DOT,
 
@@ -283,7 +273,8 @@ class Parser:
                 
             if self.current_token.type == TokenType.TIMES:
                 self.advance()
-                result = TimesNode(result, self.factor())
+                b = self.term()
+                result = TimesNode(result, b)
 
             elif self.current_token.type == TokenType.DIVIDE:
                 self.advance()
@@ -306,6 +297,10 @@ class Parser:
 
                 if need_equal == True:
                     result = BracketGetNode(result, a)
+
+            elif self.current_token.type == TokenType.LPAREN:
+                args = self.parse_args()
+                result = CallFuncNode(result, args)
 
             elif self.current_token.type == TokenType.DOT:
                 self.advance()
@@ -368,15 +363,20 @@ class Parser:
 
         while self.can_advance() and self.current_token.type in (
             TokenType.PLUS,
-            TokenType.MINUS
+            TokenType.MINUS,
+            TokenType.POWER,
         ):
             if self.current_token.type == TokenType.PLUS:
                 self.advance()
                 result = AddNode(result, self.term())
-
+                
             elif self.current_token.type == TokenType.MINUS:
                 self.advance()
                 result = MinusNode(result, self.term())
+
+            elif self.current_token.type == TokenType.POWER:
+                self.advance()
+                result = PowerNode(result, self.term())
 
         while self.can_advance() and self.current_token.type in (
             TokenType.AND,
@@ -389,7 +389,6 @@ class Parser:
 
             elif self.current_token.type == TokenType.OR:
                 self.advance()
-                a = result
                 result = OrNode(result, self.term())
                 
         return result

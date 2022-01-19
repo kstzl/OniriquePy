@@ -25,29 +25,28 @@ def taille(node):
     except:
         return NumberNode(0)
 
-tokenizer = Tokenizer("""
-a = [
-    "Kevin",
-    "Nathan",
-    "Tom",
-    "Lucas",
-    "Diego"
-]
+def test(node):
+    return NumberNode(3)
 
-pour i = 0, taille(a)
-    affiche(a[i])
-fin
+tokenizer = Tokenizer("""
+affiche((v = fonction add(a, b)
+    retourne a + b
+fin)(1, 5))
+
+affiche(v(1, 2))
+affiche(add(3, 4))
 """)
 
 ctx = Context()
 ctx.variables["x"]              = NumberNode(10)
-ctx.functions["sqrt"]           = lambda x: NumberNode(sqrt(x.execute().value))
-ctx.functions["sin"]            = lambda x: NumberNode(sin(x.execute().value))
-ctx.functions["cos"]            = lambda x: NumberNode(cos(x.execute().value))
-ctx.functions["tan"]            = lambda x: NumberNode(tan(x.execute().value))
-ctx.functions["affiche"]        = affiche
-ctx.functions["demande"]        = demande
-ctx.functions["taille"]         = taille
+ctx.variables["sqrt"]           = lambda x: NumberNode(sqrt(x.execute().value))
+ctx.variables["sin"]            = lambda x: NumberNode(sin(x.execute().value))
+ctx.variables["cos"]            = lambda x: NumberNode(cos(x.execute().value))
+ctx.variables["tan"]            = lambda x: NumberNode(tan(x.execute().value))
+ctx.variables["affiche"]        = affiche
+ctx.variables["demande"]        = demande
+ctx.variables["taille"]         = taille
+ctx.variables["test"]           = test
 
 tokens = tokenizer.generate_tokens()
 root_node = Parser(tokens).parse()

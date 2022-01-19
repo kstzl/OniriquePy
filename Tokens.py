@@ -54,6 +54,8 @@ class TokenType(Enum):
     AND         =   41
     OR          =   42
 
+    POWER       =   43
+
 class Token:
     def __init__(self, t, v = None) -> None:
         self.type   = t

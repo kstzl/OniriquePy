@@ -57,6 +57,9 @@ class Tokenizer:
                     yield Token(TokenType.DIV_EQ)
                 else:
                     yield Token(TokenType.DIVIDE)
+            elif self.current_char == "^":
+                self.advance()
+                yield Token(TokenType.POWER)
             elif self.current_char == "(":
                 self.advance()
                 yield Token(TokenType.LPAREN)
