@@ -1,0 +1,8 @@
+affiche("Salut depuis le module !")
+
+fonction mdr(i)
+    r = "mdr " * i
+
+    #Pour enlever le dernier caractère (l'espace)
+    retourne r--
+fin

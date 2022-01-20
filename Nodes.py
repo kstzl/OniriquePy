@@ -1,5 +1,7 @@
 from Interpreter import *
+from Tokenizer import *
 from Tokens import *
+import Parser_
 from Context import Context
 import copy
 
@@ -107,9 +109,10 @@ class StringNode(BaseNode):
     def __func_call__(self, args):
         self.context.check_variable(self.value)
         v = self.context.variables[self.value]
-        
         if v != None:
-            return v.__func_call__(args)
+            if isinstance(v, BaseNode):
+                return v.__func_call__(args)
+            return v(*args)
         else:
             self.raise_error(f"Vous avez essayé d'appeler la chaine '{self.value}' mais la fonction associé n'existe pas.")
 
@@ -139,11 +142,19 @@ class StringNode(BaseNode):
         self.expect_node_type("-=", other, NumberNode)
         return StringNode(self.value[:-int(other.execute().value)])
 
+    def __multed__(self, factor):
+        self.expect_node_type("string * value", factor, NumberNode)
+        f = factor.f_execute(self).value
+        return StringNode(self.value * int(f))
+
     def __print__(self):
         return self.value
 
     def __size__(self):
         return NumberNode(len(self.value))
+
+    def __number__(self):
+        return NumberNode(int(self.value))
 
     def execute(self):
         return self
@@ -298,6 +309,25 @@ class FalseNode(BaseNode):
     def __print__(self):
         return "Faux"
 
+class NullNode(BaseNode):
+    def __init__(self) -> None:
+        pass
+
+    def execute(self):
+        return self
+
+    def __is_bool__(self):
+        return False
+
+    def __not__(self):
+        return TrueNode()
+
+    def __repr__(self) -> str:
+        return "(NULL NODE)"
+
+    def __print__(self):
+        return "Rien"
+
 class PositiviteNumberNode(BaseNode):
     def __init__(self, value) -> None:
         self.value = value
@@ -424,11 +454,17 @@ class CallFuncNode(BaseNode):
 
         #func = self.context.variables[self.func]
         
+        self.func.f_execute(self)
+        return self.func.__func_call__(self.args)
+
+        """
+        return
         func = self.func
         res = None
 
         try:
-            func = self.context.variables[self.func]
+            pass
+            #func = self.context.variables[self.func]
         except: pass
 
         if isinstance(func, BaseNode):
@@ -440,6 +476,7 @@ class CallFuncNode(BaseNode):
             if res != None: res.f_execute(self)
 
         return res
+        """
 
     def __repr__(self) -> str:
         return f"({self.func}())"
@@ -461,10 +498,42 @@ class EndNode(BaseNode):
         super().__init__()
 
     def execute(self):
-        return None
+        return NullNode()
     
     def __repr__(self) -> str:
         return "(end)"
+
+class CustomClassNode(BaseNode):
+    def __init__(self, class_name, class_params, class_content):
+        self.class_name = class_name
+        self.class_params = class_params
+        self.class_content = class_content
+
+    def __func_call__(self, args):
+    
+        #Instanciated Object
+        io = InstanciateClassNode(self.class_name, self.class_params)
+
+        #Assigning Self
+        self.context.variables["moi"] = io
+
+        #Checking for the constructor
+        for b in self.class_content:
+            if isinstance(b, CustomFunctionNode):
+                if b.func_name == self.class_name:
+                    b.f_execute(self)
+                    b.__func_call__(args)
+
+            setattr(io, b.func_name, b)
+
+        return io
+
+    def execute(self):
+        self.context.variables[self.class_name] = self
+        return self
+
+    def __repr__(self) -> str:
+        return f"(class definition {self.class_name})"
 
 class CustomFunctionNode(BaseNode):
     def __init__(self, func_name, func_params, func_content) -> None:
@@ -485,7 +554,7 @@ class CustomFunctionNode(BaseNode):
 
         #Setting variables
         for i, _ in enumerate(self.func_params):
-            param_name      = self.func_params[i].var_name
+            param_name      = self.func_params[i].name
             param_result    = args[i]
 
             ctx.variables[param_name] = param_result
@@ -514,7 +583,7 @@ class InstanciateClassNode(BaseNode):
         return self.instance
 
     def __repr__(self) -> str:
-        return f"INSTANCE OF {self.class_name}"
+        return f"(instance of {self.class_name})"
         
 class CallClassFuncNode(BaseNode):
     def __init__(self, var_name, func_name, func_params) -> None:
@@ -664,7 +733,7 @@ class ConditionalNode(BaseNode):
                 for b in self.blocks_else:
                     b.f_execute(self)
 
-        #return None
+        return NullNode()
 
     def __repr__(self) -> str:
         return f"(If : {self.condition})"
@@ -701,7 +770,7 @@ class ForNode(BaseNode):
         else:
             loop = range(start, end)
 
-        self.context = copy.deepcopy(self.context)
+        #self.context = copy.deepcopy(self.context)
         self.context.loop_node = self
 
         for i in loop:
@@ -725,7 +794,7 @@ class ForEachNode(BaseNode):
 
         self.broken = False
 
-        self.context = copy.deepcopy(self.context)
+        #self.context = copy.deepcopy(self.context)
         self.context.loop_node = self
 
         var_iterator = self.var.f_execute(self).__iterate__()
@@ -749,7 +818,7 @@ class WhileNode(BaseNode):
 
         self.broken = False
         
-        self.context = copy.deepcopy(self.context)
+        #self.context = copy.deepcopy(self.context)
         self.context.loop_node = self
 
         while node_to_bool(self.cond.f_execute(self)) and not self.broken:
@@ -774,7 +843,7 @@ class DotAccessor(BaseNode):
     def __init__(self, left, right) -> None:
         self.left = left
         self.right = right
-
+        
     def execute(self):
         left = self.left.f_execute(self)
         right = self.right
@@ -786,27 +855,155 @@ class DotAccessor(BaseNode):
             if hasattr(left, func_name):
                 func = getattr(left, func_name)
                 args = right.execute_args(self)
-                return func(*args)
 
-        self.raise_error(f"Attention ! {left} n'a pas la fonction \"{right}\" !")
+                try:
+                    return func(*args)
+                except:
+                    func.context = self.context
+                    return func.__func_call__(args)
+
+            else:
+                self.raise_error(f"Attention ! {left} n'a pas la fonction \"{right}\" !")
+
+        elif isinstance(right, GetVarNode):
+            property_name = right.var_name
+            
+            if hasattr(left, property_name):
+                return getattr(left, property_name)
+
+            else:
+                self.raise_error(f"Attention ! {left} n'a pas la propriété \"{right}\" !")
+
+        elif isinstance(right, SetVarNode):
+            property_name = right.var_name
+            
+            #if hasattr(left, property_name):
+            if True:
+                new_content = right.var_content.f_execute(self)
+                setattr(left, property_name, new_content)
+                return getattr(left, property_name)
+
+        self.raise_error(f"Attention ! {left} ne peut pas fonctionner avec \"{right}\" !")
 
     def __repr__(self) -> str:
         return f"({self.left}.{self.right})"
+
+class IdentifierNode(BaseNode):
+    def __init__(self, name):
+        self.name = name
+        self.show_result = True
+
+    def __equal__(self, n):
+        n = n.f_execute(self)
+        self.set_v(n)
+        return n
+        #return
+
+    def __print__(self):
+        return self.get_v()
+
+    def itest(self, o):
+        if isinstance(o, IdentifierNode):
+            return o.get_v()
+        else:
+            return o
+
+    #REDIRECTING THINGS LOOOOL
+    def __added__(self, other):
+        return self.get_v().__added__(self.itest(other))
+    
+    def __subbed__(self, other):
+        return self.get_v().__subbed__(self.itest(other))
+
+    def __multed__(self, other):
+        return self.get_v().__multed__(self.itest(other))
+
+    def __divided__(self, other):
+        return self.get_v().__divided__(self.itest(other))
+
+    def __eqeq__(self, other):
+        return self.get_v().__eqeq__(self.itest(other))
+
+    def __bracket_get__(self, index):
+        return self.get_v().__bracket_get__(self.itest(index))
+
+    def __bracket_set__(self, index):
+        return self.get_v().__bracket_set__(self.itest(index))
+
+    def __plus_plus__(self):
+        return self.set_v(self.get_v().__plus_plus__())
+
+    def __minus_minus__(self):
+        return self.set_v(self.get_v().__minus_minus__())
+
+    def __plus_eq__(self, other):
+        return self.set_v(self.get_v().__plus_eq__(self.itest(other)))
+
+    def __minus_eq__(self, other):
+        return self.set_v(self.get_v().__minus_eq__(self.itest(other)))
+
+    def __times_eq__(self, other):
+        return self.set_v(self.get_v().__times_eq__(self.itest(other)))
+
+    def __div_eq__(self, other):
+        return self.set_v(self.get_v().__div_eq__(self.itest(other)))
+
+    def __func_call__(self, args):
+        a = [e.f_execute(self) for e in args]
+        g = self.get_v()
+        if isinstance(g, BaseNode):
+            g.f_execute(self)
+            return g.__func_call__(a)
+        return self.context.variables[self.name](*a)
+
+    def get_v(self):
+        return self.context.variables[self.name]
+
+    def set_v(self, v):
+        self.context.variables[self.name] = v
+        return v
+
+    def execute(self):
+        if not self.name in self.context.variables:
+            self.set_v(NullNode())
+        #self.context.variables[self.name] = NullNode()
+        return self.get_v() if self.show_result else self
+
+    def __repr__(self):
+        return f"(Identifier: {self.name})"
 
 class PlusPlusMinusMinusEtc(BaseNode):
     def __init__(self, node, tok, val = None):
         self.node = node
         self.tok = tok
         self.val = val
+        #print(self.node, self.tok, self.val)
+
+        self.node.show_result = False
 
     def execute(self):
-        node = self.node.f_execute(self)
-        result = None
 
-        if self.val != None:
-            self.val.f_execute(self)
+        if isinstance(self.node, DotAccessor):
+            #C'est de la bricole ça :/ mais bon
+            self.raise_error(f"{self.node}({self.tok}) etc n'est pas encore implémenté sorry..")
+        else:
+            node = self.node.f_execute(self)
+  
+        result = None
         
-        if self.tok == TokenType.PLUS_PLUS:
+        #AUTO REDIRECTING LOL
+        """
+        if isinstance(self.node, IdentifierNode):
+            if self.tok != TokenType.EQUAL:
+                return
+                node = self.node.get_v()
+            else:
+                print("no")
+        """
+
+        if self.tok == TokenType.EQUAL:
+            result = node.__equal__(self.val)
+        elif self.tok == TokenType.PLUS_PLUS:
             result =  node.__plus_plus__()
         elif self.tok == TokenType.MINUS_MINUS:
             result = node.__minus_minus__()
@@ -819,10 +1016,15 @@ class PlusPlusMinusMinusEtc(BaseNode):
         elif self.tok == TokenType.DIV_EQ:
             result = node.__div_eq__(self.val)
 
-        if isinstance(self.node, GetVarNode):
-            return SetVarNode(self.node.var_name, result.f_execute(self)).f_execute(self)
-        else:
-            return result.f_execute(self)
+        #AUTO REDIRECTING LOL
+        #if isinstance(self.node, IdentifierNode):
+            #self.node.__equal__(result)
+
+        #if isinstance(self.node, GetVarNode):
+            #return SetVarNode(self.node.var_name, result.f_execute(self)).f_execute(self)
+        #else:
+        #else:
+        return result.f_execute(self)
 
     def __repr__(self):
         return f"(++{self.node})"
@@ -916,3 +1118,23 @@ class ListNode(BaseNode):
 
     def __repr__(self):
         return f"(Liste : {self.content})"
+
+class ImportNode(BaseNode):
+    def __init__(self, module_path):
+        self.module_path = module_path
+
+    def execute(self):
+        v = self.module_path.f_execute(self).value
+        try:
+            f = open(v)
+
+            tokens = Tokenizer(f.read()).generate_tokens()
+            f.close()
+            
+            root_node = Parser_.Parser(tokens).parse()
+            root_node.f_execute(self)
+        except Exception as e:
+            self.raise_error(f"Impossible d'importer le module {v} !")
+
+    def __repr__(self):
+        return f"(Import '{self.module_path}')"

@@ -58,6 +58,10 @@ class TokenType(Enum):
     EACH        =   44
     IN          =   45
 
+    CLASS_DEF   =   46
+
+    IMPORT      =   47
+    
 class Token:
     def __init__(self, t, v = None) -> None:
         self.type   = t

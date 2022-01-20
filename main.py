@@ -5,6 +5,7 @@ from Tokenizer import *
 from Tokens import *
 from Nodes import *
 from Interpreter import *
+from test_oop import *
 
 def affiche(*nodes):
     for node in nodes:
@@ -25,16 +26,22 @@ def taille(node):
     except:
         return NumberNode(0)
 
-def test():
-    return NumberNode(3)
+def nombre(node):
+    try:
+        return node.__number__()
+    except:
+        return NumberNode(0)
 
 tokenizer = Tokenizer("""
+importe "test_module.oni"
 
-"a b c".enMajuscule()
-.enMajuscule()
-.enMajuscule()
-.separe(" ")
-[1]
+q = nombre(demande("Combien de mdr voulez vous ? "))
+
+si q == 0 alors
+    affiche("Tu as mit zéro mdr ... Je suis déçu")
+sinon
+    affiche(mdr(q))
+fin
 
 """)
 
@@ -47,7 +54,9 @@ ctx.variables["tan"]            = lambda x: NumberNode(tan(x.execute().value))
 ctx.variables["affiche"]        = affiche
 ctx.variables["demande"]        = demande
 ctx.variables["taille"]         = taille
-ctx.variables["test"]           = test
+ctx.variables["nombre"]         = nombre
+ctx.classes["Test"]             = Test
+ctx.variables["test"]           = lambda: print("called")
 
 tokens = tokenizer.generate_tokens()
 root_node = Parser(tokens).parse()

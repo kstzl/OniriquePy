@@ -92,12 +92,16 @@ class Parser:
 
         elif token.type == TokenType.IDENTIFIER:
             self.advance()
+            return IdentifierNode(token.value)
+
+        elif token.type == -1:
+            self.advance()
 
             if self.can_advance():
                 if self.current_token.type == TokenType.EQUAL:
                     self.advance()
                     return SetVarNode(token.value, self.expr())
-
+                    
                 elif self.current_token.type == TokenType.LPAREN:
                     return CallFuncNode(token.value, self.parse_args())
 
@@ -124,6 +128,20 @@ class Parser:
 
             self.advance()
             return CustomFunctionNode(func_name, func_args, func_blocks)
+
+        elif token.type == TokenType.CLASS_DEF:
+            self.advance()
+
+            class_name = self.eat(TokenType.IDENTIFIER)
+            class_args = self.parse_args()
+            class_blocks = []
+
+            while self.current_token.type != TokenType.END:
+                e = self.expr()
+                class_blocks.append(e)
+
+            self.advance()
+            return CustomClassNode(class_name, class_args, class_blocks)
 
         elif token.type == TokenType.NEW:
             self.advance()
@@ -235,6 +253,10 @@ class Parser:
             content = self.parse_args(start_token = TokenType.LBRACKET, end_token = TokenType.RBRACKET)
             return ListNode(content)
 
+        elif token.type == TokenType.IMPORT:
+            self.advance()
+            return ImportNode(self.expr())
+
         self.raise_error("NUMBER | PLUS | MINUS was expected !")
 
     def parse_args(self, start_token = TokenType.LPAREN, end_token = TokenType.RPAREN):
@@ -275,6 +297,7 @@ class Parser:
 
             TokenType.DOT,
 
+            TokenType.EQUAL,
             TokenType.PLUS_PLUS,
             TokenType.MINUS_MINUS,
             TokenType.PLUS_EQ,
@@ -328,6 +351,10 @@ class Parser:
                 a = self.factor()
                 result = DotAccessor(result, a)
 
+            elif self.current_token.type == TokenType.EQUAL:
+                self.advance()
+                result = PlusPlusMinusMinusEtc(result, TokenType.EQUAL, self.expr())
+                
             elif self.current_token.type == TokenType.PLUS_PLUS:
                 self.advance()
                 result = PlusPlusMinusMinusEtc(result, TokenType.PLUS_PLUS)

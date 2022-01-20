@@ -1,3 +1,1 @@
-def test(): pass
-
-"test"()
+1 += 1

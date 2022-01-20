@@ -1,0 +1,27 @@
+A.B = 1 FONCTIONNE
+A.B += 1 NE FONCTIONNE PAS
+c normal mais il faut l'implémenter mdr
+a voir pr changer le fnctionment du dot accessor genre en :
+
+DOT_ACCESSOR[[GET : A].[[PLUS_PLUS]B]]
+un truc comme ça mdr
+
+mieux implémenter le NullNode()
+faire implémentation des classes custom
+"
+classe personne()
+
+    fonction dit()
+        affiche(moi.prenom)
+    fin
+
+    fonction personne(prenom)
+        moi.prenom = prenom
+    fin
+fin
+
+a = personne("Kevin")
+b = personne("Jean")
+
+a.dit()
+"

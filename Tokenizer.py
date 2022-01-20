@@ -174,6 +174,12 @@ class Tokenizer:
         elif result == "dans":
             return Token(TokenType.IN)
 
+        elif result == "classe":
+            return Token(TokenType.CLASS_DEF)
+
+        elif result == "importe":
+            return Token(TokenType.IMPORT)
+
         #DEPRECATED
         #elif result == "finif":
             #return Token(TokenType.ENDIF)
