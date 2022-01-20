@@ -1,0 +1,8 @@
+fonction a() affiche("A :D") fin
+fonction b() affiche("B :D") fin
+fonction c() affiche("C :D") fin
+
+pour chaque lettre dans "abc"
+    affiche("Je vais appeler " + lettre + ": ")
+    lettre()
+fin

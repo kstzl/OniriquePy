@@ -317,11 +317,10 @@ class Parser:
                 if need_equal == True:
                     result = BracketGetNode(result, a)
 
-            #DEPRECATED
-            #elif self.current_token.type == TokenType.LPAREN:
-            #elif self.current_token.type == -1:
-                #args = self.parse_args()
-                #result = CallFuncNode(result, args)
+            #DEPRECATED / TESTING
+            elif self.current_token.type == TokenType.LPAREN:
+                args = self.parse_args()
+                result = CallFuncNode(result, args)
 
             elif self.current_token.type == TokenType.DOT:
                 self.advance()

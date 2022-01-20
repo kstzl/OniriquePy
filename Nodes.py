@@ -104,6 +104,15 @@ class StringNode(BaseNode):
         to_list[i] = val.execute().value
         return StringNode("".join(to_list))
 
+    def __func_call__(self, args):
+        self.context.check_variable(self.value)
+        v = self.context.variables[self.value]
+        
+        if v != None:
+            return v.__func_call__(args)
+        else:
+            self.raise_error(f"Vous avez essayé d'appeler la chaine '{self.value}' mais la fonction associé n'existe pas.")
+
     def __iterate__(self):
         return [StringNode(e) for e in self.value]
 
@@ -146,7 +155,8 @@ class StringNode(BaseNode):
         return StringNode(self.value.upper())
 
     def separe(self, separator):
-        to_list = self.value.split(separator.f_execute(self).value)
+        self.expect_node_type("séparer", separator, StringNode)
+        to_list = self.value.split(separator.value)
         res = [StringNode(e) for e in to_list]
         return ListNode(res)
 
@@ -412,16 +422,22 @@ class CallFuncNode(BaseNode):
 
     def execute(self):
 
-        #f = self.func.f_execute(self)
+        #func = self.context.variables[self.func]
+        
+        func = self.func
+        res = None
 
-        func = self.context.variables[self.func]
+        try:
+            func = self.context.variables[self.func]
+        except: pass
 
         if isinstance(func, BaseNode):
+            func = func.f_execute(self)
+            #res = func.__func_call__(self.execute_args())
             res = func.__func_call__(self.execute_args())
         else:
             res = func(*self.execute_args())
             if res != None: res.f_execute(self)
-            #res.context = self.context
 
         return res
 

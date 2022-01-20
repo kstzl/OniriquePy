@@ -6,6 +6,6 @@ fonction fib(n)
     fin
 fin
 
-pour i = 6, 10
+pour i = 0, 10
     affiche(fib(i))
 fin
