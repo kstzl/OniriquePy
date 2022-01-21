@@ -13,10 +13,10 @@ funcA = fonction ajoute(a, b)
     retourne a + b
 fin(3, 4)
 
-affiche("CALLING 'funcA' : ")
+affiche("CALLING 'funcA' (3 + 4) : ")
 affiche(funcA)
-affiche("CALLING 'ajoute' : ")
-affiche(ajoute(3, 4))
+affiche("CALLING 'ajoute' (10 + 15) : ")
+affiche(ajoute(10, 15))
 
 affiche("Calling 'affiche'('yo')")
 "affiche"("yo")

@@ -49,7 +49,7 @@ class BracketGetNode(BaseNode):
         return node_executed.__bracket_get__(id_executed)
 
     def __repr__(self) -> str:
-        return f"({self.node}[{self.index}])"
+        return f"(GET[{self.index}] from {self.node})"
 
 class BracketSetNode(BaseNode):
     def __init__(self, node, index, val) -> None:
@@ -91,6 +91,7 @@ class RootNode(BaseNode):
 class StringNode(BaseNode):
     def __init__(self, value) -> None:
         self.value = value
+        self.taille = NumberNode(len(self.value))
 
     def __bracket_get__(self, other):
         self.expect_node_type("de recupérer un index dans un", other, NumberNode)
@@ -163,7 +164,7 @@ class StringNode(BaseNode):
         return StringNode(self.value.upper())
 
     def enMinuscule(self):
-        return StringNode(self.value.upper())
+        return StringNode(self.value.lower())
 
     def separe(self, separator):
         self.expect_node_type("séparer", separator, StringNode)
@@ -451,32 +452,16 @@ class CallFuncNode(BaseNode):
         return _executed_args
 
     def execute(self):
-
         #func = self.context.variables[self.func]
-        
-        self.func.f_execute(self)
-        return self.func.__func_call__(self.args)
+        res = self.func.f_execute(self)
 
-        """
-        return
-        func = self.func
-        res = None
+        if isinstance(self.func, DotAccessor):
+            r = res(*self.execute_args())
+            return r
 
-        try:
-            pass
-            #func = self.context.variables[self.func]
-        except: pass
-
-        if isinstance(func, BaseNode):
-            func = func.f_execute(self)
-            #res = func.__func_call__(self.execute_args())
-            res = func.__func_call__(self.execute_args())
         else:
-            res = func(*self.execute_args())
-            if res != None: res.f_execute(self)
-
-        return res
-        """
+            r = self.func.__func_call__(self.args)
+            return r
 
     def __repr__(self) -> str:
         return f"({self.func}())"
@@ -848,40 +833,9 @@ class DotAccessor(BaseNode):
         left = self.left.f_execute(self)
         right = self.right
 
-        #print(right.__dict__)
-        if isinstance(right, CallFuncNode):
-            func_name = right.func
-
-            if hasattr(left, func_name):
-                func = getattr(left, func_name)
-                args = right.execute_args(self)
-
-                try:
-                    return func(*args)
-                except:
-                    func.context = self.context
-                    return func.__func_call__(args)
-
-            else:
-                self.raise_error(f"Attention ! {left} n'a pas la fonction \"{right}\" !")
-
-        elif isinstance(right, GetVarNode):
-            property_name = right.var_name
-            
-            if hasattr(left, property_name):
-                return getattr(left, property_name)
-
-            else:
-                self.raise_error(f"Attention ! {left} n'a pas la propriété \"{right}\" !")
-
-        elif isinstance(right, SetVarNode):
-            property_name = right.var_name
-            
-            #if hasattr(left, property_name):
-            if True:
-                new_content = right.var_content.f_execute(self)
-                setattr(left, property_name, new_content)
-                return getattr(left, property_name)
+        if hasattr(left, right.name):
+            r = getattr(left, right.name)
+            return r
 
         self.raise_error(f"Attention ! {left} ne peut pas fonctionner avec \"{right}\" !")
 
@@ -897,7 +851,6 @@ class IdentifierNode(BaseNode):
         n = n.f_execute(self)
         self.set_v(n)
         return n
-        #return
 
     def __print__(self):
         return self.get_v()
@@ -927,8 +880,8 @@ class IdentifierNode(BaseNode):
     def __bracket_get__(self, index):
         return self.get_v().__bracket_get__(self.itest(index))
 
-    def __bracket_set__(self, index):
-        return self.get_v().__bracket_set__(self.itest(index))
+    def __bracket_set__(self, index, val):
+        return self.set_v(self.get_v().__bracket_set__(self.itest(index), val))
 
     def __plus_plus__(self):
         return self.set_v(self.get_v().__plus_plus__())
@@ -977,32 +930,25 @@ class PlusPlusMinusMinusEtc(BaseNode):
         self.node = node
         self.tok = tok
         self.val = val
-        #print(self.node, self.tok, self.val)
 
         self.node.show_result = False
 
     def execute(self):
 
-        if isinstance(self.node, DotAccessor):
-            #C'est de la bricole ça :/ mais bon
-            self.raise_error(f"{self.node}({self.tok}) etc n'est pas encore implémenté sorry..")
-        else:
-            node = self.node.f_execute(self)
-  
+        if self.val != None:
+            r = self.val.f_execute(self)
+            
+        node = self.node.f_execute(self)
         result = None
-        
-        #AUTO REDIRECTING LOL
-        """
-        if isinstance(self.node, IdentifierNode):
-            if self.tok != TokenType.EQUAL:
-                return
-                node = self.node.get_v()
-            else:
-                print("no")
-        """
 
         if self.tok == TokenType.EQUAL:
-            result = node.__equal__(self.val)
+
+            if hasattr(node, "is_bracket"):
+                s = node.bracket_set
+                result = node.old_node.__bracket_set__(s, r)
+            else:
+                result = node.__equal__(r)
+
         elif self.tok == TokenType.PLUS_PLUS:
             result =  node.__plus_plus__()
         elif self.tok == TokenType.MINUS_MINUS:
@@ -1015,19 +961,16 @@ class PlusPlusMinusMinusEtc(BaseNode):
             result = node.__times_eq__(self.val)
         elif self.tok == TokenType.DIV_EQ:
             result = node.__div_eq__(self.val)
+        elif self.tok == TokenType.LBRACKET:
+            result = node.__bracket_get__(self.val)
+            result.is_bracket = True
+            result.bracket_set = self.val
+            result.old_node = node
 
-        #AUTO REDIRECTING LOL
-        #if isinstance(self.node, IdentifierNode):
-            #self.node.__equal__(result)
-
-        #if isinstance(self.node, GetVarNode):
-            #return SetVarNode(self.node.var_name, result.f_execute(self)).f_execute(self)
-        #else:
-        #else:
         return result.f_execute(self)
 
     def __repr__(self):
-        return f"(++{self.node})"
+        return f"({self.tok}{self.node})"
 
 class AndNode(BaseNode):
     def __init__(self, left, right):
@@ -1126,7 +1069,7 @@ class ImportNode(BaseNode):
     def execute(self):
         v = self.module_path.f_execute(self).value
         try:
-            f = open(v)
+            f = open(v, encoding = "utf-8")
 
             tokens = Tokenizer(f.read()).generate_tokens()
             f.close()

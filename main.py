@@ -32,17 +32,12 @@ def nombre(node):
     except:
         return NumberNode(0)
 
+def test():
+    print("called")
+    return NullNode()
+
 tokenizer = Tokenizer("""
-importe "test_module.oni"
-
-q = nombre(demande("Combien de mdr voulez vous ? "))
-
-si q == 0 alors
-    affiche("Tu as mit zéro mdr ... Je suis déçu")
-sinon
-    affiche(mdr(q))
-fin
-
+importe "test_hardcore.oni"
 """)
 
 ctx = Context()
@@ -56,7 +51,7 @@ ctx.variables["demande"]        = demande
 ctx.variables["taille"]         = taille
 ctx.variables["nombre"]         = nombre
 ctx.classes["Test"]             = Test
-ctx.variables["test"]           = lambda: print("called")
+ctx.variables["test"]           = test
 
 tokens = tokenizer.generate_tokens()
 root_node = Parser(tokens).parse()

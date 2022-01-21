@@ -322,7 +322,8 @@ class Parser:
                 self.advance()
                 result = DivideNode(result, self.factor())
 
-            elif self.current_token.type == TokenType.LBRACKET:
+            #elif self.current_token.type == TokenType.LBRACKET:
+            elif self.current_token.type == -1:
                 self.advance()
                 a = self.factor()
                 self.eat(TokenType.RBRACKET)
@@ -353,7 +354,8 @@ class Parser:
 
             elif self.current_token.type == TokenType.EQUAL:
                 self.advance()
-                result = PlusPlusMinusMinusEtc(result, TokenType.EQUAL, self.expr())
+                e = self.expr()
+                result = PlusPlusMinusMinusEtc(result, TokenType.EQUAL, e)
                 
             elif self.current_token.type == TokenType.PLUS_PLUS:
                 self.advance()
@@ -378,6 +380,12 @@ class Parser:
             elif self.current_token.type == TokenType.DIV_EQ:
                 self.advance()
                 result = PlusPlusMinusMinusEtc(result, TokenType.DIV_EQ, self.factor())
+
+            elif self.current_token.type == TokenType.LBRACKET:
+                self.advance()
+                i = self.expr()
+                result = PlusPlusMinusMinusEtc(result, TokenType.LBRACKET, i)
+                self.eat(TokenType.RBRACKET)
 
             #Conditions
             elif self.current_token.type == TokenType.EQEQ:
