@@ -41,7 +41,6 @@ importe "test_hardcore.oni"
 """)
 
 ctx = Context()
-ctx.variables["x"]              = NumberNode(10)
 ctx.variables["sqrt"]           = lambda x: NumberNode(sqrt(x.execute().value))
 ctx.variables["sin"]            = lambda x: NumberNode(sin(x.execute().value))
 ctx.variables["cos"]            = lambda x: NumberNode(cos(x.execute().value))

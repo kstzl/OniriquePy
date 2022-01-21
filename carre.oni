@@ -1,0 +1,22 @@
+fonction afficheCarre(longueur, hauteur)
+
+    barre = "* " * longueur
+
+    affiche(barre)
+
+    pour y = 0, hauteur - 2
+
+        affiche(barre)
+
+    fin
+
+    affiche(barre)
+
+fin
+
+
+x = nombre(demande("Longueur : "))
+y = nombre(demande("Hauteur : "))
+affiche("")
+
+afficheCarre(x, y)

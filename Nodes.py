@@ -128,9 +128,14 @@ class StringNode(BaseNode):
         self.expect_node_type("!=", other, StringNode)
         return bool_to_node(self.value != other.execute().value)
 
+    def __subbed__(self, other):
+        self.expect_node_type("-", other, NumberNode)
+        return StringNode(self.value[:-int(other.execute().value)])
+
     def __added__(self, other):
-        self.expect_node_type("+", other, StringNode)
-        return StringNode(self.value + other.execute().value)
+        #self.expect_node_type("+", other, StringNode)
+        #return StringNode(self.value + other.execute().value)
+        return StringNode(self.value + other.execute().__print__())
 
     def __plus_eq__(self, other):
         self.expect_node_type("+", other, StringNode)
@@ -264,7 +269,7 @@ class NumberNode(BaseNode):
         return NumberNode(self.value / b)
 
     def __print__(self):
-        return self.value 
+        return str(self.value)
 
     def execute(self):
         return self
